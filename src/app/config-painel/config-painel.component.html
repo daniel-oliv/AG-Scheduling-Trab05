@@ -1,4 +1,4 @@
-<h1 class="rootTag container">Simple GA Example</h1>
+<h1 class="rootTag container">Scheduling Mantenaince Example</h1>
 
 <button class="btn btn-primary" (click)="optimize()">Encontrar máximo/mínimo</button>
 
@@ -18,26 +18,9 @@
 				[step]="0.01" [min]="0" [max]="1"
 				[animate]="true" ></p-slider>
 				<br>
-				<h6>Resolução: {{resolution}}</h6>
-				<p-slider class="slider" [(ngModel)]="resolution" 
-				[step]="1" [min]="5" [max]="20" 
-				[animate]="true" ></p-slider>
-				<br>
 				<h6>Tamanho da população: {{populationSize}}</h6>
 				<p-slider class="slider" [(ngModel)]="populationSize" 
 				[step]="2" [min]="2" [max]="100"
-				[animate]="true" ></p-slider>
-				<br>
-				<h6>Limite máximo do intervalo: {{intervalMax}}</h6>
-				<p-slider class="slider" [(ngModel)]="intervalMax" 
-				(onChange)="drawFunction()"
-				[step]="1" [min]="intervalMin" [max]="1000"
-				[animate]="true" ></p-slider>
-				<br>
-				<h6>Limite mínimo do intervalo: {{intervalMin}}</h6>
-				<p-slider class="slider" [(ngModel)]="intervalMin" 
-				(onChange)="drawFunction()"
-				[step]="1" [min]="-1000" [max]="intervalMax"
 				[animate]="true" ></p-slider>
 				<br>
 				<h6>Número de gerações: {{maxNumOfGenerations}}</h6>
@@ -100,15 +83,18 @@
 			<p-table [value]="bestInd" class="table table-dark">
 					<ng-template pTemplate="header">
 						<tr>
-							<th>x</th>
-							<th>f(x)</th>
+							<!--<th *ngFor="let machine of schedulingConfig.machines">Unidade {{machine.unitID}}</th>-->
+							<th>Manutenções</th>
+							<th>Potências líquidas</th>
+							<th>fitness</th>
 							<th>Generation</th>
 						</tr>
 					</ng-template>
 					<ng-template pTemplate="body" let-indiv>
 						<tr>
-							<td>{{indiv.realNumber}}</td>
-							<td>{{functionToAnalise(indiv.realNumber)}}</td>
+							<td><span *ngFor="let machine of indiv.data.machines"> {{machine.maintenanceStart}},  </span></td>
+							<td><span *ngFor="let potLiq of indiv.data.pl"> {{potLiq}},  </span></td>
+							<td>{{indiv.fitness}}</td>
 							<td>{{indiv.generation}}</td>
 						</tr>
 					</ng-template>

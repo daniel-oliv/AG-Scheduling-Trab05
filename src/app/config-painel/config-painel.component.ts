@@ -8,7 +8,7 @@ import { Component, OnInit, ɵConsole } from "@angular/core";
 export class ConfigPainelComponent implements OnInit {
   probMutacao: number;
   probCruzamento: number;
-  resolution: number;
+  //resolution: number;
   populationSize: number;
   //intervalMax: number;
   //intervalMin: number;
@@ -48,7 +48,6 @@ export class ConfigPainelComponent implements OnInit {
 
     this.probCruzamento = 0.6;
     this.probMutacao = 0.01;
-    this.resolution = 10;
     this.populationSize = 50;
     this.maxNumOfGenerations = 70;
     this.bestInd = [];
@@ -196,7 +195,7 @@ export class ConfigPainelComponent implements OnInit {
     let averageFitnessDataset = {
       label: "Average fitness",
       data: generations.map(element => {
-        ///////return this.calcFitnessAverage(element);
+        return this.calcFitnessAverage(element);
       }),
       backgroundColor: "#eeeeff",
       borderColor: "#0000ff",
@@ -474,19 +473,19 @@ export class ConfigPainelComponent implements OnInit {
 
     ///Math.floor(Math.random()*(this.resolution - 1)) 0 to 8 - +=1 1 to 9
     let indexToCross: number =
-      Math.floor(Math.random() * (this.resolution - 1)) + 1; /// 1 to 9 (pos entre os bits)
+      Math.floor(Math.random() * (this.numOfVariables - 1)) + 1; /// 1 to 9 (pos entre os bits)
     //console.log("crossIndividuals indexToCross: " + indexToCross);
 
     newChromosome = couple[0].chromosome
       .slice(0, indexToCross)
-      .concat(couple[1].chromosome.slice(indexToCross, this.resolution));
+      .concat(couple[1].chromosome.slice(indexToCross, this.numOfVariables));
     let ind1: individual = this.getIndividual(newChromosome);
     newIndividuals.push(ind1);
     //console.log("crossIndividuals ind1: " + ind1.chromosome);
 
     newChromosome = couple[1].chromosome
       .slice(0, indexToCross)
-      .concat(couple[0].chromosome.slice(indexToCross, this.resolution));
+      .concat(couple[0].chromosome.slice(indexToCross, this.numOfVariables));
     let ind2: individual = this.getIndividual(newChromosome);
     newIndividuals.push(ind2);
     //console.log("crossIndividuals ind2: " + ind2.chromosome);
@@ -524,10 +523,12 @@ export class ConfigPainelComponent implements OnInit {
   ///new chromosome -> select ramdom values to all variables
   getRandomVariables(): Variable[]
   {
+    //console.log("getRandomVariables");
     let variables: Variable[] = [];
     for (let index = 0; index < this.numOfVariables; index++) {
-      this.getRamdomVariable(index);
+      variables.push(this.getRamdomVariable(index));
     }
+    //console.log("getRandomVariables ", variables);
     return variables;
   }
 
@@ -572,20 +573,21 @@ export class ConfigPainelComponent implements OnInit {
       data: {
         pp: [],
         pl: [],
-        machines: this.schedulingConfig.machines.concat()
+        machines: []
       }
     };
 
     /// calculate variable outputs
     for (const variable of indiv.chromosome) {
-      indiv.data.machines[0].maintenanceStart = variable.value;
+      let machine: Machine = {maintenanceStart: variable.value}
+      indiv.data.machines.push( machine );
     }
 
     indiv.fitness = this.calcFitness(indiv);
 
     ///getting the best individuals
     this.evaluateIndividual(indiv);
-
+    //console.log("getIndividual", indiv);
     return indiv;
   }
 
@@ -640,8 +642,9 @@ export class ConfigPainelComponent implements OnInit {
     return containsInd;
   }
 
-  getRamdomVariable(indexVar: number)
+  getRamdomVariable(indexVar: number): Variable
   {
+    //console.log("getRamdomVariable indexVar", indexVar);
     let variable: Variable = {
       id: (indexVar + 1).toString()    
     }
@@ -655,25 +658,13 @@ export class ConfigPainelComponent implements OnInit {
     /// se numOfMaintenances=2, numOfStarts = 3, e retorna um número entre 0 e 2 
     /// que representa uma possível representação binária - 00, 01, 10 
     variable.value = this.getRamdomInt(numOfStarts);
-
+    //console.log("getRamdomVariable variable", variable);
     return variable;
   }
 
   getRamdomInt(maxExclusive: number)
   {
     return Math.floor(Math.random() * maxExclusive);
-  }
-
-  getRandomChromosome(resolution: number) 
-  {
-    let chromosome = [];
-    /// select 1 and 0 at random to get the binary number
-    for (let i = 0; i < resolution; i++)
-      chromosome.push(Math.round(Math.random()));
-
-    //console.log("getRandomChromosome: " + chromosome);
-
-    return chromosome;
   }
 
   calcFitness(indiv: individual): number 
@@ -700,8 +691,9 @@ export class ConfigPainelComponent implements OnInit {
     for (const iMachine in data.machines) {
       /// se o intervalo está entre star e o final = startMa + numOfMaintenances - 1
       const machineConfig = this.schedulingConfig.machines[iMachine];
-      if(intervalIndex >= machineConfig.maintenanceStart && 
-        intervalIndex <= this.getMaintenanceEnd(machineConfig))
+      const machine = data.machines[iMachine];
+      if(intervalIndex >= machine.maintenanceStart && 
+        intervalIndex <= this.getMaintenanceEnd(machine.maintenanceStart, machineConfig.numOfMaintenances))
         {
           pp += this.schedulingConfig.machines[iMachine].capacity;
         }
@@ -709,9 +701,9 @@ export class ConfigPainelComponent implements OnInit {
     return pp;
   }
 
-  getMaintenanceEnd(machine: MachineConfig)
+  getMaintenanceEnd(maintenanceStart: number, numOfMaintenances: number)
   {
-    return machine.maintenanceStart  + machine.numOfMaintenances  - 1;
+    return maintenanceStart  + numOfMaintenances  - 1;
   }
 
   calcPLs(indiv: individual){
@@ -745,12 +737,6 @@ export class ConfigPainelComponent implements OnInit {
     return decimalValue;
   }
 
-  /*
-  getDecimalMax() 
-  {
-    return Math.pow(2, this.resolution);
-  }
-
   calcFitnessAverage(generation: individual[]): number {
     let averageFit: number = 0;
     generation.forEach(element => {
@@ -759,7 +745,7 @@ export class ConfigPainelComponent implements OnInit {
     averageFit /= generation.length;
     return averageFit;
   }
-  */
+  
 
   /////////////////////
 }
