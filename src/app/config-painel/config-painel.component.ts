@@ -1,6 +1,4 @@
 import { Component, OnInit, ɵConsole } from "@angular/core";
-import { THIS_EXPR } from "@angular/compiler/src/output/output_ast";
-import { element } from "protractor";
 
 @Component({
   selector: "app-config-painel",
@@ -38,7 +36,9 @@ export class ConfigPainelComponent implements OnInit {
   performanceData: any;
   bestIndividualData: any;
 
-  schedulingConfig: schedulingData;
+  schedulingConfig: schedulingConfig;
+  numOfIntervals: number;
+  numOfVariables: number;
 
   constructor() {}
 
@@ -62,8 +62,9 @@ export class ConfigPainelComponent implements OnInit {
     this.checkBoxSelectedItens = ["elitism"];
     this.numOfIndividualsInTourney = 4;
     this.numOfElitismInd = 2;
-
+    this.numOfIntervals = 4;
     this.initSchedulingConfig();
+    this.numOfVariables = 7;
 
   }
 
@@ -71,27 +72,27 @@ export class ConfigPainelComponent implements OnInit {
   {
     let potDemandas = [80, 90, 65, 70];
     let capacities = [20, 15, 35, 40, 15, 15, 10];
-    let numOfIntervals = [2, 2, 1, 1, 1, 1, 1];
+    let numOfMaintenanceIntervals = [2, 2, 1, 1, 1, 1, 1];
 
     this.schedulingConfig = 
     {
       pt: this.sumArray(potDemandas),
-      intervals: [],
+      pd: potDemandas,
       machines: []
     }
 
     for (let index = 0; index < capacities.length; index++) 
     {
-      let machine: Machine = 
+      let machine: MachineConfig = 
       {
-        unitID: index+1,
+        unitID: (index+1).toString(),
         capacity: capacities[index],
-        numOfMaintenances: numOfIntervals[index],
+        numOfMaintenances: numOfMaintenanceIntervals[index],
 
       }
       this.schedulingConfig.machines.push(machine)
     }
-
+    /*
     for (let index = 0; index < potDemandas.length; index++) 
     {
       let interval: Interval = 
@@ -100,7 +101,7 @@ export class ConfigPainelComponent implements OnInit {
       }
       this.schedulingConfig.intervals.push(interval)
     }
-
+    */
     console.log("initSchedulingConfig", this.schedulingConfig);
   }
 
@@ -195,7 +196,7 @@ export class ConfigPainelComponent implements OnInit {
     let averageFitnessDataset = {
       label: "Average fitness",
       data: generations.map(element => {
-        return this.calcFitnessAverage(element);
+        ///////return this.calcFitnessAverage(element);
       }),
       backgroundColor: "#eeeeff",
       borderColor: "#0000ff",
@@ -469,7 +470,7 @@ export class ConfigPainelComponent implements OnInit {
     //console.log("crossIndividuals couple: ");
     //couple.forEach((indiv)=>console.log(indiv.chromosome));
     let newIndividuals: individual[] = [];
-    let newChromosome: number[] = [];
+    let newChromosome: Variable[] = [];
 
     ///Math.floor(Math.random()*(this.resolution - 1)) 0 to 8 - +=1 1 to 9
     let indexToCross: number =
@@ -501,16 +502,15 @@ export class ConfigPainelComponent implements OnInit {
     {
       let indiv = population[j];
       mutationApplied = false;
-      for (let k = 0; k < indiv.chromosome.length; k++) 
+      for (let varIndex = 0; varIndex < indiv.chromosome.length; varIndex++) 
       {
         if (Math.random() < this.probMutacao) 
         {
           //console.log("mutation in individual " + j + " chromosome " + k);
           mutationApplied = true;
           //console.log("before mutation" + indiv.chromosome[k]);
-          if (indiv.chromosome[k] === 1) indiv.chromosome[k] = 0;
-          //if(indiv.chromosome[k] === 0)
-          else indiv.chromosome[k] = 1;
+          ///change data that relies on variable, as machineStart
+          this.getRamdomVariable(varIndex);
           //console.log("after mutation" + indiv.chromosome[k]);
         }
       }
@@ -519,6 +519,16 @@ export class ConfigPainelComponent implements OnInit {
         population.splice(j, 1, this.getIndividual(indiv.chromosome));
       }
     }
+  }
+
+  ///new chromosome -> select ramdom values to all variables
+  getRandomVariables(): Variable[]
+  {
+    let variables: Variable[] = [];
+    for (let index = 0; index < this.numOfVariables; index++) {
+      this.getRamdomVariable(index);
+    }
+    return variables;
   }
 
   selectIndividual(ci: number[]): number {
@@ -538,9 +548,8 @@ export class ConfigPainelComponent implements OnInit {
     for (let i = 0; i < this.populationSize; i++) 
     {
       //console.log("selectInitialPopulation: " + i);
-      currentGeneration.push(
-        this.getIndividual(this.getRandomChromosome(this.resolution))
-      );
+      
+      currentGeneration.push(  this.getIndividual(this.getRandomVariables())  );
     }
 
     /*
@@ -556,17 +565,28 @@ export class ConfigPainelComponent implements OnInit {
     return currentGeneration;
   }
 
-  getIndividual(chromosome: number[]): individual {
+  getIndividual(chromosome: Variable[]): individual {
     //console.log("getIndividual");
-    let ind: individual = { chromosome };
-    ////////ind.realNumber = this.wholeToReal(   this.binArrayToDecimal(ind.chromosome) + 1    );
+    let indiv: individual = {
+      chromosome: this.getRandomVariables(),
+      data: {
+        pp: [],
+        pl: [],
+        machines: this.schedulingConfig.machines.concat()
+      }
+    };
 
-    ////////ind.fitness = this.calcFitness(ind.realNumber);
+    /// calculate variable outputs
+    for (const variable of indiv.chromosome) {
+      indiv.data.machines[0].maintenanceStart = variable.value;
+    }
+
+    indiv.fitness = this.calcFitness(indiv);
 
     ///getting the best individuals
-    this.evaluateIndividual(ind);
+    this.evaluateIndividual(indiv);
 
-    return ind;
+    return indiv;
   }
 
   evaluateIndividual(indiv: individual) 
@@ -620,6 +640,30 @@ export class ConfigPainelComponent implements OnInit {
     return containsInd;
   }
 
+  getRamdomVariable(indexVar: number)
+  {
+    let variable: Variable = {
+      id: (indexVar + 1).toString()    
+    }
+    /// it could be done inside a function if every var is a different thing
+    let  machine = this.schedulingConfig.machines[indexVar];
+    /// se numOfMaintenances (número de intervalos consecutivos de manutenção) é:
+    /// numOfMaintenances=2 -> 4-(2-1)=3 
+    /// numOfMaintenances=1 -> 4-(1-1)=4 
+    let numOfStarts = 4 - (machine.numOfMaintenances - 1);
+    
+    /// se numOfMaintenances=2, numOfStarts = 3, e retorna um número entre 0 e 2 
+    /// que representa uma possível representação binária - 00, 01, 10 
+    variable.value = this.getRamdomInt(numOfStarts);
+
+    return variable;
+  }
+
+  getRamdomInt(maxExclusive: number)
+  {
+    return Math.floor(Math.random() * maxExclusive);
+  }
+
   getRandomChromosome(resolution: number) 
   {
     let chromosome = [];
@@ -632,19 +676,53 @@ export class ConfigPainelComponent implements OnInit {
     return chromosome;
   }
 
-  calcFitness(realNumber: number) 
+  calcFitness(indiv: individual): number 
   {
-    ///trab 02 funcion
-    /// fitness was set as -f+c, since -f grows when f is minimized
-    //return - this.functionToAnalise(realNumber) + 400;
-    //return - this.functionToAnalise(realNumber);
+    let fitness = 0;
+    this.calcPPs(indiv);
+    this.calcPLs(indiv);
 
-    ///trab 03 funcion
-    //return this.functionToAnalise(realNumber) - this.minFunctionInTheInterval;
-    
-    ///considering 0 to 1
-    /// and that minFunctionInTheInterval is a negative number
-    ////////return (this.functionToAnalise(realNumber) - this.minFunctionInTheInterval) / (this.maxFunctionInTheInterval - this.minFunctionInTheInterval);
+    fitness = this.minArray(indiv.data.pl);
+    if(fitness < 0) fitness = 0;
+
+    return fitness;
+  }
+
+  calcPPs(indiv: individual){
+    for (let index = 0; index < this.numOfIntervals; index++) {
+      indiv.data.pp[index] = this.calcPP(index, indiv.data);
+    }
+  }
+
+  calcPP(intervalIndex: number, data: schedulingData): number
+  {
+    let pp = 0;
+    for (const iMachine in data.machines) {
+      /// se o intervalo está entre star e o final = startMa + numOfMaintenances - 1
+      const machineConfig = this.schedulingConfig.machines[iMachine];
+      if(intervalIndex >= machineConfig.maintenanceStart && 
+        intervalIndex <= this.getMaintenanceEnd(machineConfig))
+        {
+          pp += this.schedulingConfig.machines[iMachine].capacity;
+        }
+    }
+    return pp;
+  }
+
+  getMaintenanceEnd(machine: MachineConfig)
+  {
+    return machine.maintenanceStart  + machine.numOfMaintenances  - 1;
+  }
+
+  calcPLs(indiv: individual){
+    for (let index = 0; index < this.numOfIntervals; index++) {
+      indiv.data.pl[index] = this.calcPl(this.schedulingConfig.pt, this.schedulingConfig.pd[index], indiv.data.pp[index]);      
+    }
+  }
+
+  calcPl(pt:number, pd: number, pp: number)
+  {
+    return pt - pd - pp;
   }
 
   functionToAnalise(x: number): number 
@@ -667,6 +745,7 @@ export class ConfigPainelComponent implements OnInit {
     return decimalValue;
   }
 
+  /*
   getDecimalMax() 
   {
     return Math.pow(2, this.resolution);
@@ -680,14 +759,15 @@ export class ConfigPainelComponent implements OnInit {
     averageFit /= generation.length;
     return averageFit;
   }
+  */
 
   /////////////////////
 }
 
 interface individual {
-  chromosome?: number[];
+  chromosome?: Variable[];
 
-  data?: schedulingData;
+  data: schedulingData;
 
   ///indicates how much the the individual is good (generally is f(x)+c)
   fitness?: number;
@@ -695,31 +775,42 @@ interface individual {
   ///generation number
   generation?: number;
 
+}
 
+interface Variable{
+  ///match with unitId
+  id: string;
+  //binary?: string;
+  value?: number;
 }
 
 interface schedulingData{
-  pt: number;
-  intervals: Interval[];
+  //pt: number;
+  /// potências perdidas em cada intervalo
+  pp: number[];
+
+  /// potências líquidas em cada intervalo
+  pl: number[];
+
   machines: Machine[];
 }
 
-interface schedulingData{
+interface schedulingConfig{
   pt: number;
-  intervals: Interval[];
-  machines: Machine[];
+  pd: number[];
+  machines: MachineConfig[];
 }
-
+/*
 interface Interval{
   /// potência perdida no intervalo (soma de todas as máquinas em manutenção)
   pp?: number;
   /// potência demanda no intervalo
   pd: number;
 }
-
-interface Machine{
+*/
+interface MachineConfig{
   /// identificador de 1 a 7
-  unitID: number;
+  unitID: string;
 
   /// potência da unidade
   capacity: number;
@@ -727,6 +818,14 @@ interface Machine{
   /// número de intervalos consecutivos de manutenção - duração da manutenção
   numOfMaintenances: number;
 
-  /// 
+  /// the number between 0 and 3, representing one of the four year intervals
   maintenanceStart?: number;
+
+  binary?: string;
+}
+
+interface Machine{
+  maintenanceStart?: number;
+
+  binary?: string;
 }
