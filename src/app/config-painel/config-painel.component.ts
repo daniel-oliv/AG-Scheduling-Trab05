@@ -637,7 +637,19 @@ export class ConfigPainelComponent implements OnInit {
   {
     let containsInd = false;
     this.bestInd.forEach(element => {
-      ////////if (element.realNumber == indiv.realNumber) containsInd = true;
+      let areAllVarEqual = true;
+      for (const iVar in element.chromosome) {
+        if(element.chromosome[iVar].value != indiv.chromosome[iVar].value)
+        {
+          areAllVarEqual = false;
+          break;
+        }
+      }
+      if(areAllVarEqual)
+      {
+        containsInd = true;
+        return containsInd;
+      }
     });
     return containsInd;
   }
