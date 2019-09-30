@@ -75,7 +75,7 @@ export class ConfigPainelComponent implements OnInit {
 
     this.schedulingConfig = 
     {
-      pt: this.sumArray(potDemandas),
+      pt: this.sumArray(capacities),
       pd: potDemandas,
       machines: []
     }
