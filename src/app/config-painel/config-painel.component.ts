@@ -569,7 +569,7 @@ export class ConfigPainelComponent implements OnInit {
   getIndividual(chromosome: Variable[]): individual {
     //console.log("getIndividual");
     let indiv: individual = {
-      chromosome: this.getRandomVariables(),
+      chromosome: chromosome,
       data: {
         pp: [],
         pl: [],
